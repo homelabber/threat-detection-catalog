@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Threat Coverage Atlas | homelabber</title>
+<meta name="description" content="A field guide to who's already watching what in Microsoft Sentinel — and where the gaps actually are." />
+<style>
+  :root{
+    --bg: #05070d;
+    --bg-panel: #0c1120;
+    --bg-card: #11182c;
+    --border: #1f2a45;
+    --border-glow: #2d3f6b;
+    --text: #e8edf9;
+    --text-dim: #93a0c2;
+    --text-faint: #5d6a8c;
+    --accent: #5ee6c0;
+    --accent-2: #7aa2ff;
+    --warn: #ffb547;
+    --warn-bg: #2a2110;
+    --warn-border: #5a4418;
+    --danger: #ff6b6b;
+    --official: #7aa2ff;
+    --community: #c792ea;
+    --mine: #ffd166;
+    --vendor: #8a93a8;
+    --radius: 14px;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html{ scroll-behavior: smooth; }
+  body{
+    margin:0;
+    background: radial-gradient(1200px 600px at 10% -10%, #10183a 0%, transparent 60%),
+                radial-gradient(900px 500px at 100% 0%, #0e2a2a 0%, transparent 55%),
+                var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { color: var(--accent); text-decoration: underline; }
+
+  .grid-overlay{
+    position: fixed; inset:0; pointer-events:none; z-index:0; opacity:.35;
+    background-image:
+      linear-gradient(rgba(94,230,192,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(94,230,192,0.035) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+  }
+
+  header.hero{
+    position: relative; z-index:1;
+    padding: 5rem 1.5rem 3.5rem;
+    text-align:center;
+    border-bottom: 1px solid var(--border);
+  }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:.5rem;
+    font-size: .78rem; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(94,230,192,0.08);
+    border: 1px solid rgba(94,230,192,0.3);
+    padding: .4rem .9rem; border-radius: 999px;
+    margin-bottom: 1.4rem;
+  }
+  .eyebrow .dot{ width:7px; height:7px; border-radius:50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  h1.title{
+    font-size: clamp(2.1rem, 5vw, 3.4rem);
+    margin: 0 0 1rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff 10%, var(--accent-2) 55%, var(--accent) 100%);
+    -webkit-background-clip: text; background-clip:text; color: transparent;
+  }
+  .tagline{
+    max-width: 760px; margin: 0 auto 1.8rem;
+    font-size: 1.15rem; color: var(--text-dim);
+  }
+  .tagline b{ color: var(--text); font-weight: 600; }
+  .hero-meta{
+    display:flex; flex-wrap:wrap; justify-content:center; gap:.6rem 1.4rem;
+    font-size:.85rem; color: var(--text-faint); margin-top: .5rem;
+  }
+  .hero-meta span strong{ color: var(--text-dim); }
+
+  nav.toc{
+    position: sticky; top:0; z-index: 20;
+    backdrop-filter: blur(10px);
+    background: rgba(5,7,13,0.85);
+    border-bottom: 1px solid var(--border);
+    padding: .75rem 1rem;
+    overflow-x:auto; white-space:nowrap;
+  }
+  nav.toc .toc-inner{ display:flex; gap:.5rem; max-width:1200px; margin:0 auto; justify-content:center; }
+  nav.toc a{
+    color: var(--text-dim); font-size:.82rem; font-weight:600;
+    padding:.45rem .8rem; border-radius: 999px; border:1px solid transparent;
+    white-space:nowrap;
+  }
+  nav.toc a:hover{ color: var(--text); border-color: var(--border-glow); text-decoration:none; background: rgba(122,162,255,0.08); }
+
+  main{ position:relative; z-index:1; max-width: 1200px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+  .legend{
+    display:flex; flex-wrap:wrap; gap:.6rem 1.2rem; justify-content:center;
+    margin: 0 0 3.5rem; font-size:.82rem; color: var(--text-dim);
+  }
+  .legend .chip{ display:inline-flex; align-items:center; gap:.4rem; }
+  .swatch{ width:10px; height:10px; border-radius:3px; display:inline-block; }
+
+  section.category{ margin-bottom: 4.5rem; scroll-margin-top: 5.5rem; }
+  .cat-head{ margin-bottom: 1.6rem; }
+  .cat-number{
+    font-size: .8rem; font-weight:700; color: var(--accent);
+    letter-spacing: .1em; text-transform: uppercase;
+  }
+  .cat-title{ font-size: 1.9rem; font-weight:800; margin: .3rem 0 .6rem; letter-spacing:-0.01em; }
+  .cat-question{
+    font-size: 1.05rem; color: var(--text-dim); font-style: italic;
+    border-left: 3px solid var(--accent-2); padding-left: .9rem;
+  }
+
+  .gap-banner{
+    margin: 1.2rem 0 1.8rem; padding: 1rem 1.3rem;
+    background: var(--warn-bg); border: 1px solid var(--warn-border);
+    border-radius: var(--radius); color: #ffd79b; font-size: .92rem;
+    display:flex; gap:.8rem; align-items:flex-start;
+  }
+  .gap-banner .icon{ font-size:1.3rem; line-height:1; }
+  .gap-banner strong{ color: var(--warn); }
+
+  .card-grid{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.1rem;
+  }
+  .card{
+    background: var(--bg-card); border:1px solid var(--border);
+    border-radius: var(--radius); padding: 1.3rem 1.4rem;
+    position:relative; overflow:hidden; transition: transform .15s ease, border-color .15s ease;
+  }
+  .card:hover{ transform: translateY(-3px); border-color: var(--border-glow); }
+  .card.mine{ border-color: rgba(255,209,102,0.35); background: linear-gradient(165deg, #1a1706 0%, var(--bg-card) 45%); }
+  .card.mine:hover{ border-color: var(--mine); }
+
+  .badge-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:.6rem; margin-bottom:.7rem; }
+  .badge{
+    font-size: .68rem; font-weight:700; letter-spacing:.04em; text-transform: uppercase;
+    padding: .28rem .6rem; border-radius: 999px; white-space:nowrap;
+  }
+  .badge.official{ background: rgba(122,162,255,0.14); color: var(--official); border:1px solid rgba(122,162,255,0.35); }
+  .badge.community{ background: rgba(199,146,234,0.14); color: var(--community); border:1px solid rgba(199,146,234,0.35); }
+  .badge.mine{ background: rgba(255,209,102,0.16); color: var(--mine); border:1px solid rgba(255,209,102,0.4); }
+  .badge.vendor{ background: rgba(138,147,168,0.14); color: var(--vendor); border:1px solid rgba(138,147,168,0.35); }
+
+  .freshness{ font-size:.72rem; color: var(--text-faint); white-space:nowrap; text-align:right; }
+  .freshness.fresh{ color: var(--accent); }
+  .freshness.stale{ color: var(--danger); }
+
+  .card h3{ margin: 0 0 .5rem; font-size: 1.08rem; line-height:1.3; }
+  .card p.desc{ margin: 0 0 .7rem; font-size: .9rem; color: var(--text-dim); }
+  .card p.note{ margin:0; font-size:.78rem; color: var(--text-faint); border-top:1px dashed var(--border); padding-top:.6rem; }
+  .card p.note.good{ color: var(--accent); }
+  .star{ color: var(--mine); }
+
+  footer{
+    text-align:center; padding: 3rem 1.5rem 4rem; color: var(--text-faint);
+    font-size: .85rem; border-top: 1px solid var(--border); position:relative; z-index:1;
+  }
+  footer a{ color: var(--text-dim); }
+  footer .sig{ margin-top:.6rem; font-style: italic; }
+
+  ::-webkit-scrollbar{ height: 8px; width: 8px; }
+  ::-webkit-scrollbar-thumb{ background: var(--border-glow); border-radius: 8px; }
+</style>
+</head>
+<body>
+<div class="grid-overlay"></div>
+
+<header class="hero">
+  <div class="eyebrow"><span class="dot"></span> Last recon pass: November 2026</div>
+  <h1 class="title">The Threat Coverage Atlas</h1>
+  <p class="tagline">
+    Ten questions a SOC analyst actually asks at 2am. Who in the Sentinel ecosystem already answers them,
+    who's just vibing with a stale 2023 rule, and where <b>I told Copilot to go find the gap instead of
+    reinventing someone else's wheel</b>. Spoiler: there were gaps.
+  </p>
+  <div class="hero-meta">
+    <span><strong>10</strong> categories</span>
+    <span>·</span>
+    <span><strong>60+</strong> solutions catalogued</span>
+    <span>·</span>
+    <span><strong>3</strong> categories flagged thin</span>
+    <span>·</span>
+    <span>Built by <a href="https://github.com/homelabber" target="_blank" rel="noopener">@homelabber</a></span>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="toc-inner">
+    <a href="#identity-compromise">Identity</a>
+    <a href="#privileged-account-compromise">Privileged</a>
+    <a href="#email-bec">Email &amp; BEC</a>
+    <a href="#endpoint-compromise">Endpoint</a>
+    <a href="#application-workload-identity">Apps/Workload</a>
+    <a href="#cloud-resource-compromise">Cloud</a>
+    <a href="#lateral-movement">Lateral Movement</a>
+    <a href="#data-exfiltration">Data/Exfil</a>
+    <a href="#ransomware-destructive">Ransomware</a>
+    <a href="#security-control-tampering">Tampering</a>
+  </div>
+</nav>
+
+<main>
+
+<div class="legend">
+  <span class="chip"><span class="swatch" style="background:var(--official)"></span> Official Microsoft Content Hub</span>
+  <span class="chip"><span class="swatch" style="background:var(--community)"></span> Community GitHub repo</span>
+  <span class="chip"><span class="swatch" style="background:var(--vendor)"></span> Vendor / ISV-backed</span>
+  <span class="chip"><span class="swatch" style="background:var(--mine)"></span> ⭐ Mine (homelabber)</span>
+</div>
+
+<!-- ============================================================ -->
+<!-- 1. IDENTITY COMPROMISE -->
+<!-- ============================================================ -->
+<section class="category" id="identity-compromise">
+  <div class="cat-head">
+    <div class="cat-number">Category 01 / 10</div>
+    <h2 class="cat-title">🪪 Identity Compromise</h2>
+    <p class="cat-question">"Is this identity compromised?"</p>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>Microsoft Entra ID — Analytic Rules Bundle</h3>
+      <p class="desc">70+ rules in one living solution: password spray, impossible-travel-style brute force, Conditional Access bypass, MFA-fatigue, sign-in from disabled accounts. Basically the load-bearing wall of this whole category.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Microsoft Entra ID</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness">Updated 20 Apr 2026</span></div>
+      <h3>UEBA Essentials</h3>
+      <p class="desc">Behavioral-analytics hunting: anomalous sign-ins, user-centric anomaly triage, top anomalous source-IP review, plus a new "UEBA Behaviors Analysis" XDR workbook.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/UEBA Essentials</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 15 Oct 2026</span></div>
+      <h3>Microsoft Entra ID Protection</h3>
+      <p class="desc">Correlates ID Protection risk signals — atypical travel, unfamiliar sign-in properties — into a single analytic rule, now with an XDR custom-detection twin.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Microsoft Entra ID Protection</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official · Preview</span><span class="freshness">Updated 26 Jun 2026</span></div>
+      <h3>Hybrid Attack – Cloud &amp; Identity</h3>
+      <p class="desc">New private-preview solution stitching on-prem AD telemetry to Entra ID sign-ins — finally admits that attackers don't respect the hybrid boundary either.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Hybrid Attack - Cloud &amp; Identity</p>
+    </div>
+
+    <div class="card mine">
+      <div class="badge-row"><span class="badge mine">⭐ Mine</span><span class="freshness fresh">Updated 9 Nov 2026</span></div>
+      <h3>mdi-freshness</h3>
+      <p class="desc">Custom detections and dashboards for 2026 AD tradecraft that Defender for Identity's own alert catalog hasn't caught up to yet.</p>
+      <p class="note good">★ Verified gap: official DCSync/Golden-Ticket-era AD coverage is thin and stale in the Sentinel repo. This was built to sit in that exact blind spot, not duplicate it.</p>
+    </div>
+
+    <div class="card mine">
+      <div class="badge-row"><span class="badge mine">⭐ Mine</span><span class="freshness fresh">Updated 25 Sep 2026</span></div>
+      <h3>sentinel-account-sharing-workbook</h3>
+      <p class="desc">One workbook, four data sources (MDI + Entra ID + MDE + UEBA), one question: is this login actually the person it claims to be, or are three people sharing a password like a Netflix account?</p>
+      <p class="note good">★ No official workbook correlates these four sources specifically for account-sharing/credential-reuse — UEBA Essentials scores anomalies generally but doesn't do this cross-product lens.</p>
+    </div>
+
+    <div class="card mine">
+      <div class="badge-row"><span class="badge mine">⭐ Mine</span><span class="freshness fresh">Updated 9 Nov 2026</span></div>
+      <h3>entra-and-consequences</h3>
+      <p class="desc">Evidence-focused Entra attack-chain investigations — workbooks, analytics rules, and XDR detection candidates built to complement (not clone) native coverage.</p>
+      <p class="note">Honest disclosure: topical neighborhood overlap with the 70-rule Entra ID bundle above is plausible by subject matter. Query-logic diff not yet performed — flagged for follow-up, not swept under the rug.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 2. PRIVILEGED ACCOUNT COMPROMISE -->
+<!-- ============================================================ -->
+<section class="category" id="privileged-account-compromise">
+  <div class="cat-head">
+    <div class="cat-number">Category 02 / 10</div>
+    <h2 class="cat-title">👑 Privileged Account Compromise</h2>
+    <p class="cat-question">"Has an attacker obtained elevated access?"</p>
+  </div>
+
+  <div class="gap-banner">
+    <span class="icon">⚠️</span>
+    <div><strong>Gap called out:</strong> cloud-side (PIM, role assignment) coverage is excellent and current. On-prem DCSync / Golden-Silver-Ticket detection logic in actively-maintained GitHub content is noticeably thin — the closest official match is Defender for Identity's built-in (non-GitHub) alerting, which isn't something I can link you a commit history for.</div>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>PrivlegedRoleAssignedOutsidePIM (+ NRT)</h3>
+      <p class="desc">Flags privileged role grants made outside PIM — the "I'll just skip the approval workflow" move, caught in near-real-time.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>PIMElevationRequestRejected (+ NRT)</h3>
+      <p class="desc">Watches for repeated/anomalous rejected PIM elevation requests — because attackers, like toddlers, keep asking after "no."</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>BulkChangestoPrivilegedAccountPermissions</h3>
+      <p class="desc">Catches mass/bulk privilege changes in a short window — the "smash and grab" pattern seen ahead of 2025-26 BEC and ransomware precursor activity.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>AuthenticationMethodsChangedforPrivilegedAccount</h3>
+      <p class="desc">MFA/auth-method changes on privileged or VIP accounts — the classic "register my own authenticator" persistence move after token theft.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>AdminPromoAfterRoleMgmtAppPermissionGrant</h3>
+      <p class="desc">Detects "grant RoleManagement.ReadWrite.Directory to an app, then self-promote to admin" — the cloud privesc chain that keeps showing up in 2024-2026 Entra attacks.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card mine">
+      <div class="badge-row"><span class="badge mine">⭐ Mine</span><span class="freshness fresh">Updated 25 Sep 2026</span></div>
+      <h3>sentinel-account-sharing-workbook</h3>
+      <p class="desc">Same workbook as Identity Compromise above — it also earns its keep here, since shared/reused credentials on privileged accounts is a quieter path to "elevated access" than any PIM bypass.</p>
+      <p class="note">Cross-listed on purpose — one workbook, two legitimate analyst questions.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 3. EMAIL & BEC -->
+<!-- ============================================================ -->
+<section class="category" id="email-bec">
+  <div class="cat-head">
+    <div class="cat-number">Category 03 / 10</div>
+    <h2 class="cat-title">📧 Email &amp; BEC</h2>
+    <p class="cat-question">"Did phishing lead to compromise or mailbox abuse?"</p>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 28 Oct 2026</span></div>
+      <h3>Possible AiTM Phishing Attempt Against Entra ID</h3>
+      <p class="desc">Sign-in followed by a network connection to the same IP — the Evilginx/Tycoon/EvilProxy session-cookie-theft fingerprint.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · SecurityThreatEssentialSolution</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness">Date unverified</span></div>
+      <h3>Possible Device Code Phishing Attempts</h3>
+      <p class="desc">Correlates device-login clicks with risky sign-in success — the Storm-2372 "please enter this code" phishing technique.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Hunting Queries / M365 Defender / Phish</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 15 Oct 2026</span></div>
+      <h3>Defender XDR Email &amp; Collaboration Hunting Bundle</h3>
+      <p class="desc">18+ queries: inbox-rule-forward abuse, email bombing as a help-desk-call decoy, OneDrive/SharePoint/Dropbox file-sharing BEC tactics, conversation takeover.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Defender XDR / Hunting Queries</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge vendor">Vendor</span><span class="freshness">Updated 5 Jun 2026</span></div>
+      <h3>Abnormal Security — Vendor Compromise</h3>
+      <p class="desc">Fires on compromised/impersonated vendor domains. Good coverage — if you're also running the Abnormal Security connector, which not everyone is.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/AbnormalSecurity (requires 3rd-party connector)</p>
+    </div>
+
+    <div class="card mine">
+      <div class="badge-row"><span class="badge mine">⭐ Mine</span><span class="freshness fresh">Updated 9 Nov 2026</span></div>
+      <h3>MDO-Anomalies</h3>
+      <p class="desc">Sentinel workbook + Defender XDR custom detections for email bombing, <em>quishing</em>, AiTM, device-code phishing, and BEC — the attacks that actually land in 2026 inboxes.</p>
+      <p class="note good">★ Verified gap: nothing in the official catalog is literally built for QR-code phishing. "Quishing" doesn't have a Microsoft rule with its name on it. Now it does, sort of — it has yours.</p>
+    </div>
+
+    <div class="card mine">
+      <div class="badge-row"><span class="badge mine">⭐ Mine</span><span class="freshness">Updated 14 Oct 2026</span></div>
+      <h3>supplier-impersonation-sentinel</h3>
+      <p class="desc">Workbook and analytics rules for supplier/vendor impersonation — without requiring you to buy a whole extra security product to get it.</p>
+      <p class="note">Same problem space as Abnormal Security's Vendor Compromise rule, different dependency — this one runs on native Sentinel/M365 data, no 3rd-party connector required.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 4. ENDPOINT COMPROMISE -->
+<!-- ============================================================ -->
+<section class="category" id="endpoint-compromise">
+  <div class="cat-head">
+    <div class="cat-number">Category 04 / 10</div>
+    <h2 class="cat-title">💻 Endpoint Compromise</h2>
+    <p class="cat-question">"Is this device compromised?"</p>
+  </div>
+
+  <div class="gap-banner">
+    <span class="icon">⚠️</span>
+    <div><strong>Gap called out:</strong> official and community coverage here is genuinely strong — this is the one category where I don't have a homelabber project to cross-list. Noting it rather than stretching a repo description to pretend otherwise.</div>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 15 Oct 2026</span></div>
+      <h3>Microsoft Defender XDR — Endpoint Hunting Set</h3>
+      <p class="desc">Cross-workload Discovery / Privilege-Escalation / Defense-Evasion / Ransomware precursor hunting queries and workbooks for device-compromise triage.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Microsoft Defender XDR</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 23 Oct 2026</span></div>
+      <h3>Intel471 — Renamed ProcDump / LSASS Dump Hunt</h3>
+      <p class="desc">Catches renamed-ProcDump abuse for LSASS credential dumping — the "rename the .exe and hope nobody notices" school of evasion.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Intel471</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness">Updated 3 Aug 2026</span></div>
+      <h3>PRODAFT USTA — Account Takeover Prevention</h3>
+      <p class="desc">Infostealer-log intel ingestion mapping Lumma/RedLine/Raccoon/Vidar-class stolen credentials straight to your corporate identities.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/PRODAFT USTA</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness">Date unverified</span></div>
+      <h3>Suspicious Commandline Token (LOLBAS)</h3>
+      <p class="desc">Joins command-line telemetry against the LOLBAS dataset — because every living-off-the-land binary eventually gets caught monologuing in a command line.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Hunting Queries/Windows Security Events</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge community">Community</span><span class="freshness">Actively maintained</span></div>
+      <h3>Bert-JanP / Hunting-Queries-Detection-Rules</h3>
+      <p class="desc">SeDebugPrivilege → LSASS access, ClickFix fake-CAPTCHA clipboard delivery of Lumma Stealer, StealC in ProgramData — community-curated and genuinely current.</p>
+      <p class="note">github.com/Bert-JanP/Hunting-Queries-Detection-Rules</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 5. APPLICATION & WORKLOAD IDENTITY -->
+<!-- ============================================================ -->
+<section class="category" id="application-workload-identity">
+  <div class="cat-head">
+    <div class="cat-number">Category 05 / 10</div>
+    <h2 class="cat-title">🤖 Application &amp; Workload Identity</h2>
+    <p class="cat-question">"Is an app/service principal being abused?"</p>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>MaliciousOAuthApp_O365AttackToolkit &amp; PwnAuth</h3>
+      <p class="desc">Signature detection for known malicious OAuth app fingerprints from two public consent-phishing frameworks.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 5 Oct 2026</span></div>
+      <h3>EndUserConsentMailboxOfflineAccess</h3>
+      <p class="desc">Catches the modern illicit-consent-grant pattern — mail scopes plus <code>offline_access</code> — freshly added in September 2026, not a dusty 2019 rule.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>NewAppOrServicePrincipalCredential (+ NRT)</h3>
+      <p class="desc">New secret or cert added to an app/service principal — the core workload-identity-hijacking tell, now with a near-real-time variant.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>CredentialAddedAfterAdminConsent</h3>
+      <p class="desc">Chains admin-consent-grant with a subsequent credential add on the same app — high-fidelity "this app just got weaponized" signal.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>SuspiciousServicePrincipalcreationactivity</h3>
+      <p class="desc">Flags anomalous SP creation — attacker-made service principals built for persistence and workload-identity-federation abuse.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Analytic Rules</p>
+    </div>
+
+    <div class="card mine">
+      <div class="badge-row"><span class="badge mine">⭐ Mine</span><span class="freshness fresh">Updated 9 Nov 2026</span></div>
+      <h3>cloudy-with-a-chance-of-tokens</h3>
+      <p class="desc">Defender XDR-first cloud app visibility, OAuth context, and portable evidence. Because "probably fine" is not a security posture, and neither is a wall of disconnected consent-grant events.</p>
+      <p class="note">Conceptual neighbor to the official OAuth/app-credential rules above, but built as an investigation/evidence layer rather than another atomic alert — different job, same crime scene.</p>
+    </div>
+
+    <div class="card mine">
+      <div class="badge-row"><span class="badge mine">⭐ Mine</span><span class="freshness fresh">Updated 9 Nov 2026</span></div>
+      <h3>agent-under-watch <em>(preview)</em></h3>
+      <p class="desc">AI-agent threat analytics for Microsoft Sentinel. Your agents have tools now. Your SOC should have questions. This gives it some.</p>
+      <p class="note good">★ Verified gap: nothing comparable exists in official or community content as of this scan. AI-agent-as-identity is a genuinely emerging threat surface — you got here early.</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 6. CLOUD RESOURCE COMPROMISE -->
+<!-- ============================================================ -->
+<section class="category" id="cloud-resource-compromise">
+  <div class="cat-head">
+    <div class="cat-number">Category 06 / 10</div>
+    <h2 class="cat-title">☁️ Cloud Resource Compromise</h2>
+    <p class="cat-question">"Is an Azure/cloud workload compromised?"</p>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>Azure Key Vault</h3>
+      <p class="desc"><code>KeyVaultSensitiveOperations</code> and <code>KeyvaultMassSecretRetrieval</code> rules for secret-dumping and vault compromise.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Azure Key Vault</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>Azure Activity — Expensive Compute Creation</h3>
+      <p class="desc">Near-real-time alert on sudden expensive VM creation — the classic "someone's mining crypto on your Azure bill" pattern.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Azure Activity</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 19 Oct 2026</span></div>
+      <h3>Azure Kubernetes Service Solution</h3>
+      <p class="desc">AKS security workbook plus hunting and Resource Graph queries covering container/cluster escape and misconfiguration.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Azure Kubernetes Service</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 15 Oct 2026</span></div>
+      <h3>Microsoft Defender for Cloud</h3>
+      <p class="desc">Ingests MDC alerts/recommendations; new XDR custom detection flags backup deletion paired with a security alert — a ransomware tell at the cloud-workload layer.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Microsoft Defender for Cloud</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 20 Oct 2026</span></div>
+      <h3>Azure Security Benchmark</h3>
+      <p class="desc">Posture workbook and drift-detection rule for when your "secure by default" quietly stops being either.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/AzureSecurityBenchmark</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge community">Community</span><span class="freshness">Actively maintained</span></div>
+      <h3>Bert-JanP — Cloud Infrastructure Folder</h3>
+      <p class="desc">Risky sign-in followed by Key Vault activity, suspicious Key Vault enumeration — the token-theft-to-secrets pipeline, mapped end to end.</p>
+      <p class="note">github.com/Bert-JanP/Hunting-Queries-Detection-Rules</p>
+    </div>
+
+  </div>
+
+  <div class="gap-banner" style="margin-top:1.4rem;">
+    <span class="icon">🧭</span>
+    <div><strong>Noted, not claimed:</strong> no standalone Azure Automation Account / Managed Identity-named solution exists officially (folded into the rules above), and homelabber's <code>sentinelheartsnutanix</code> is an on-prem Nutanix connector — real, useful, just not a "cloud workload compromise" fit, so it's not force-listed here.</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 7. LATERAL MOVEMENT -->
+<!-- ============================================================ -->
+<section class="category" id="lateral-movement">
+  <div class="cat-head">
+    <div class="cat-number">Category 07 / 10</div>
+    <h2 class="cat-title">🕸️ Lateral Movement</h2>
+    <p class="cat-question">"Where did the attacker move?"</p>
+  </div>
+
+  <div class="gap-banner">
+    <span class="icon">🚨</span>
+    <div><strong>Thin category — calling it out directly:</strong> only 3 solid, current items surfaced. One official Content Hub partner rule (Cyborg Security PsExec/Metasploit detection) is stale since <strong>Nov 2023</strong>. Legacy "DoppelPaymer PsExec" hunting queries have no trackable update date. Official, actively-dated DCSync / pass-the-hash / pass-the-ticket rules were <em>not</em> found in the current Sentinel repo by name — this is a genuine, current gap in the ecosystem, not a shortfall in the research. No homelabber project fills it yet either.</div>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official · Preview</span><span class="freshness">Updated 26 Jun 2026</span></div>
+      <h3>Hybrid Attack – Cloud &amp; Identity</h3>
+      <p class="desc">Correlates on-prem lateral movement (RDP/WMI/WinRM/PsExec-style execution) with cloud sign-in activity on hybrid-joined devices.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Hybrid Attack - Cloud &amp; Identity</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 15 Oct 2026</span></div>
+      <h3>Defender XDR — Lateral Movement Rules</h3>
+      <p class="desc">Remote file creation via PsExec, plus service accounts suddenly discovering remote PowerShell — both current, both ransomware-adjacent.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Defender XDR / Analytic Rules / Lateral Movement</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge community">Community</span><span class="freshness">Date unverified</span></div>
+      <h3>Somtech4 / sentinel-threat-hunting</h3>
+      <p class="desc">Lightweight but on-point: DCSync, pass-the-hash, golden-ticket, RDP lateral movement, and Kerberoasting queries in one spot — the closest thing to the official gap-filler above.</p>
+      <p class="note">github.com/Somtech4/sentinel-threat-hunting · reference-quality, not hardened drop-in rules</p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 8. DATA ACCESS & EXFILTRATION -->
+<!-- ============================================================ -->
+<section class="category" id="data-exfiltration">
+  <div class="cat-head">
+    <div class="cat-number">Category 08 / 10</div>
+    <h2 class="cat-title">📤 Data Access &amp; Exfiltration</h2>
+    <p class="cat-question">"What sensitive information was accessed or removed?"</p>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>Microsoft Defender for Cloud Apps</h3>
+      <p class="desc">Anomalous file-sharing and cloud-storage exfil across OneDrive/SharePoint/Box/Dropbox/Google Drive, now with XDR custom detections.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Microsoft Defender for Cloud Apps</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>Microsoft Purview Insider Risk Management</h3>
+      <p class="desc">Risky mass downloads, risky access by application, departing-employee exfil patterns — the "two weeks' notice" detection suite.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/MicrosoftPurviewInsiderRiskManagement</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>Microsoft Purview (DLP &amp; Labels)</h3>
+      <p class="desc">Ingests DLP policy-match and sensitivity-label events — turns "someone opened a Confidential file" into something you can actually alert on.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Microsoft Purview</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>SharePoint Mass File Transfer Threshold</h3>
+      <p class="desc">5,000+ distinct file downloads/uploads/syncs by one user+IP in 15 minutes. If that's not staging for exfil, it's at least a very productive lunch break.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Microsoft 365 / Analytic Rules</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge community">Community</span><span class="freshness">Actively maintained</span></div>
+      <h3>Bert-JanP — Defender for Cloud Apps Folder</h3>
+      <p class="desc">OneDrive sync from a rare IP, risky IP activities, external admin activity — the quieter, slower exfil patterns that mass-download thresholds miss.</p>
+      <p class="note">github.com/Bert-JanP/Hunting-Queries-Detection-Rules</p>
+    </div>
+
+  </div>
+
+  <div class="gap-banner" style="margin-top:1.4rem;">
+    <span class="icon">🧭</span>
+    <div><strong>Honest note:</strong> no homelabber project currently lives in this category. If mass-exfil detection ever becomes the next weekend project, it'll land here.</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 9. RANSOMWARE / DESTRUCTIVE ACTIVITY -->
+<!-- ============================================================ -->
+<section class="category" id="ransomware-destructive">
+  <div class="cat-head">
+    <div class="cat-number">Category 09 / 10</div>
+    <h2 class="cat-title">💣 Ransomware / Destructive Activity</h2>
+    <p class="cat-question">"Is this activity part of a destructive attack?"</p>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 15 Oct 2026</span></div>
+      <h3>Defender XDR — Ransomware Rule Pack</h3>
+      <p class="desc">Shadow-copy deletion, mass file wipe via cipher.exe, Cobalt Strike + log-clear + backup-delete correlation, mass taskkill, Qakbot discovery activity — a genuinely deep pack.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Defender XDR / Analytic Rules / Ransomware</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 15 Oct 2026</span></div>
+      <h3>"Macaw Ransomware" Campaign Pack</h3>
+      <p class="desc">Pre-encryption / imminent-ransomware precursor indicators tied to a named, tracked campaign — catching it before the note, not after.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Defender XDR / Campaign / Macaw Ransomware</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge vendor">Vendor</span><span class="freshness">Updated 30 Jun 2026</span></div>
+      <h3>NetApp Ransomware Resilience</h3>
+      <p class="desc">Storage-layer ransomware detection plus containment playbooks (block user, take volume offline) — detection that can also hit the brakes.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/NetApp Ransomware Resilience</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness">Date unverified</span></div>
+      <h3>Defender XDR Ransomware Playbook for SecOps</h3>
+      <p class="desc">Logic App automating the 4-stage IR dance — containment, investigation, eradication/recovery, prevention — off a Defender XDR incident.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/SentinelSOARessentials / Playbooks</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge vendor">Vendor</span><span class="freshness stale">Updated 5 Dec 2024</span></div>
+      <h3>CTERA — Ransomware Detected</h3>
+      <p class="desc">NRT alert off CTERA's Ransom Protect AI engine — solid idea, aging gracefully but not urgently refreshed.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/CTERA · flagged as the stalest item in this whole atlas</p>
+    </div>
+
+  </div>
+
+  <div class="gap-banner" style="margin-top:1.4rem;">
+    <span class="icon">🧭</span>
+    <div><strong>Noted:</strong> Microsoft's approach here is TTP-based, not actor-branded — don't expect to find a rule literally named "LockBit" or "Akira." No homelabber project in this category yet.</div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- 10. SECURITY CONTROL TAMPERING -->
+<!-- ============================================================ -->
+<section class="category" id="security-control-tampering">
+  <div class="cat-head">
+    <div class="cat-number">Category 10 / 10</div>
+    <h2 class="cat-title">🔓 Security Control Tampering</h2>
+    <p class="cat-question">"Is someone disabling or weakening defenses?"</p>
+  </div>
+
+  <div class="gap-banner">
+    <span class="icon">⚠️</span>
+    <div><strong>Thin category:</strong> exactly 5 items found, all official, zero verified community repos despite a dedicated search. No NSG-weakening or diagnostic-settings-deletion rule was found by name either — may exist under different naming. No homelabber project here yet. If you're looking for a next build, this is the category with the most daylight.</div>
+  </div>
+
+  <div class="card-grid">
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>Conditional Access Policy Was Disabled</h3>
+      <p class="desc">Someone flipped your CA policy from enabled to disabled. This rule notices before your attack surface does.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / XDR Detections</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>Conditional Access Policy Was Deleted</h3>
+      <p class="desc">The more permanent sibling of the rule above — part of a full family also covering report-only mode switches and quiet exclusion-list edits.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / XDR Detections</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026 / 20 Jan 2026</span></div>
+      <h3>Conditional Access Insights Workbooks</h3>
+      <p class="desc">Visualizes CA posture drift alongside the detections above — because a wall of alerts means nothing without a dashboard to tell the story.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / Workbooks</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 14 Oct 2026</span></div>
+      <h3>Potential Microsoft Security Services Tampering</h3>
+      <p class="desc">Multi-source hunt for <code>sc.exe</code>/<code>taskkill</code>/PowerShell disabling Defender, Sense, or HealthService — tagged to NOBELIUM-style tradecraft.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Solutions/Endpoint Threat Protection Essentials</p>
+    </div>
+
+    <div class="card">
+      <div class="badge-row"><span class="badge official">Official</span><span class="freshness fresh">Updated 25 Oct 2026</span></div>
+      <h3>Defender XDR Custom Detections — CA Tampering Wave</h3>
+      <p class="desc">Dual-publishes the entire Conditional-Access-weakening rule family to Defender XDR's custom-detection format, MITRE provenance intact.</p>
+      <p class="note">github.com/Azure/Azure-Sentinel · Microsoft Entra ID / XDR Detections</p>
+    </div>
+
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div>Compiled by Copilot &amp; <a href="https://github.com/homelabber" target="_blank" rel="noopener">@homelabber</a> · dates reflect solution-level release notes, which is a nice way of saying "last touched," not always "logic changed."</div>
+  <div class="sig">No detections were duplicated in the making of this atlas. Three gaps were, however, cheerfully exposed.</div>
+</footer>
+
+</body>
+</html>
